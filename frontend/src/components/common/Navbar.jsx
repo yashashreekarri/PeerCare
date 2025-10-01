@@ -53,6 +53,12 @@ const Navbar = () => {
               Find Peers
             </Link>
             <Link
+              to="/connections"
+              className={navLinkClass('/connections')}
+            >
+              Connections
+            </Link>
+            <Link
               to="/chat"
               className={navLinkClass('/chat')}
             >
@@ -129,6 +135,12 @@ const Navbar = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Find Peers
+              </Link>
+              <Link
+                to="/connections"
+                className={navLinkClass('/connections')}
+              >
+                Connections
               </Link>
               <Link
                 to="/chat"

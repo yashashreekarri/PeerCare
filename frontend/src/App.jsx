@@ -4,6 +4,7 @@ import Navbar from './components/common/Navbar';
 import AuthPage from './pages/Auth/AuthPage';
 import Dashboard from './pages/Dashboard/Dashboard';
 import BrowsePeers from './pages/Profile/BrowsePeers';
+import ConnectionsPage from './pages/Connections/ConnectionsPage';
 import MyProfile from './pages/Profile/MyProfile';
 import ChatPage from './pages/Chat/ChatPage';
 import JournalPage from './pages/Journal/JournalPage';
@@ -71,6 +72,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <BrowsePeers />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/connections"
+          element={
+            <ProtectedRoute>
+              <ConnectionsPage />
             </ProtectedRoute>
           }
         />

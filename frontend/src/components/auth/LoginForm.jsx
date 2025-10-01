@@ -1,7 +1,8 @@
+// frontend/src/components/auth/LoginForm.jsx
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Loader } from 'lucide-react';
+import { Mail, Lock, Loader, AlertCircle } from 'lucide-react';
 
 const LoginForm = ({ onToggle }) => {
   const [email, setEmail] = useState('');
@@ -17,10 +18,16 @@ const LoginForm = ({ onToggle }) => {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const response = await login(email, password);
+      
+      if (response.success) {
+        navigate('/dashboard');
+      } else {
+        setError(response.message || 'Login failed. Please try again.');
+      }
     } catch (err) {
-      setError('Failed to login. Please check your credentials.');
+      console.error('Login error:', err);
+      setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -35,8 +42,9 @@ const LoginForm = ({ onToggle }) => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-            {error}
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start space-x-2">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+            <span className="text-sm">{error}</span>
           </div>
         )}
 
@@ -48,9 +56,10 @@ const LoginForm = ({ onToggle }) => {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input-field pl-12"
-              placeholder="your.email@example.com"
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
+              placeholder="your.email@iit.edu"
               required
+              disabled={loading}
             />
           </div>
         </div>
@@ -63,9 +72,11 @@ const LoginForm = ({ onToggle }) => {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="input-field pl-12"
+              className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
               placeholder="••••••••"
               required
+              disabled={loading}
+              minLength="6"
             />
           </div>
         </div>
@@ -73,7 +84,7 @@ const LoginForm = ({ onToggle }) => {
         <button
           type="submit"
           disabled={loading}
-          className="btn-primary w-full flex items-center justify-center space-x-2"
+          className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-4 rounded-lg hover:from-purple-700 hover:to-pink-700 transition duration-300 flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>
@@ -91,16 +102,11 @@ const LoginForm = ({ onToggle }) => {
           Don't have an account?{' '}
           <button
             onClick={onToggle}
-            className="text-purple-600 font-medium hover:text-purple-700 smooth-transition"
+            className="text-purple-600 font-medium hover:text-purple-700 transition"
+            disabled={loading}
           >
             Sign up
           </button>
-        </p>
-      </div>
-
-      <div className="mt-4 text-center">
-        <p className="text-sm text-gray-500">
-          Demo: Use any email and password to login
         </p>
       </div>
     </div>

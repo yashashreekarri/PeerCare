@@ -1,10 +1,15 @@
+// frontend/src/pages/Profile/MyProfile.jsx
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { Edit, Save, X, User, Mail, Calendar, Heart } from 'lucide-react';
+import { userService } from '../../services';
+import { Edit, Save, X, User, Mail, Calendar, Heart, Loader, AlertCircle, CheckCircle } from 'lucide-react';
 
 const MyProfile = () => {
-  const { user, updateProfile } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     age: user?.age || '',
@@ -13,13 +18,53 @@ const MyProfile = () => {
     interests: user?.interests?.join(', ') || ''
   });
 
-  const handleSave = () => {
-    updateProfile({
+  const handleChange = (e) => {
+    setFormData({
       ...formData,
-      struggles: formData.struggles.split(',').map(s => s.trim()).filter(s => s),
-      interests: formData.interests.split(',').map(i => i.trim()).filter(i => i)
+      [e.target.name]: e.target.value
     });
-    setIsEditing(false);
+  };
+
+  const handleSave = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      setSuccess('');
+
+      // Prepare data for API
+      const updateData = {
+        name: formData.name.trim(),
+        age: parseInt(formData.age),
+        bio: formData.bio.trim(),
+        struggles: formData.struggles
+          .split(',')
+          .map(s => s.trim())
+          .filter(s => s),
+        interests: formData.interests
+          .split(',')
+          .map(i => i.trim())
+          .filter(i => i)
+      };
+
+      const response = await userService.updateProfile(updateData);
+
+      if (response.success) {
+        // Refresh user data in context
+        await refreshUser();
+        setSuccess('Profile updated successfully!');
+        setIsEditing(false);
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        setError(response.message || 'Failed to update profile');
+      }
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setError(err.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -30,6 +75,8 @@ const MyProfile = () => {
       struggles: user?.struggles?.join(', ') || '',
       interests: user?.interests?.join(', ') || ''
     });
+    setError('');
+    setSuccess('');
     setIsEditing(false);
   };
 
@@ -47,6 +94,22 @@ const MyProfile = () => {
         </div>
 
         <div className="glass rounded-2xl p-8 animate-fadeIn">
+          {/* Success Message */}
+          {success && (
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+              <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>{success}</span>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-start space-x-2">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
           {/* Profile Header */}
           <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6 mb-8 pb-8 border-b border-gray-200">
             <img
@@ -56,150 +119,165 @@ const MyProfile = () => {
             />
             <div className="flex-1 text-center sm:text-left">
               {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="text-2xl font-bold text-gray-800 input-field mb-2"
-                />
+                <div className="space-y-3">
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Your name"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                    <input
+                      type="number"
+                      name="age"
+                      value={formData.age}
+                      onChange={handleChange}
+                      className="w-full pl-12 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      placeholder="Age"
+                      min="13"
+                      max="100"
+                    />
+                  </div>
+                </div>
               ) : (
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{user?.name}</h2>
+                <>
+                  <h2 className="text-2xl font-bold text-gray-800">{user?.name}</h2>
+                  <p className="text-gray-600">{user?.age} years old</p>
+                </>
               )}
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 text-gray-600">
-                <span className="flex items-center">
-                  <Mail className="w-4 h-4 mr-2" />
-                  {user?.email}
-                </span>
-                <span className="flex items-center">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  {user?.age} years old
-                </span>
+              <div className="flex items-center justify-center sm:justify-start space-x-2 mt-2">
+                <Mail className="w-4 h-4 text-gray-400" />
+                <p className="text-gray-600 text-sm">{user?.email}</p>
               </div>
             </div>
-            {!isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="btn-primary flex items-center space-x-2"
-              >
-                <Edit className="w-5 h-5" />
-                <span>Edit Profile</span>
-              </button>
+
+            {/* Edit/Save/Cancel Buttons */}
+            <div className="flex space-x-2">
+              {!isEditing ? (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition"
+                >
+                  <Edit className="w-4 h-4" />
+                  <span>Edit</span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
+                      <>
+                        <Loader className="w-4 h-4 animate-spin" />
+                        <span>Saving...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>Save</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={handleCancel}
+                    disabled={loading}
+                    className="flex items-center space-x-2 bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Cancel</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Bio Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center">
+              <Heart className="w-5 h-5 mr-2 text-purple-600" />
+              About Me
+            </h3>
+            {isEditing ? (
+              <textarea
+                name="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                rows="4"
+                placeholder="Tell others about yourself..."
+                maxLength="500"
+              />
+            ) : (
+              <p className="text-gray-700">
+                {user?.bio || 'No bio added yet. Click edit to add one!'}
+              </p>
             )}
           </div>
 
-          {/* Profile Details */}
-          <div className="space-y-6">
-            {/* Age */}
-            {isEditing && (
-              <div>
-                <label className="block text-gray-700 font-medium mb-2 flex items-center">
-                  <Calendar className="w-5 h-5 mr-2" />
-                  Age
-                </label>
-                <input
-                  type="number"
-                  value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                  className="input-field"
-                  min="13"
-                  max="100"
-                />
-              </div>
-            )}
-
-            {/* Bio */}
-            <div>
-              <label className="block text-gray-700 font-medium mb-2 flex items-center">
-                <User className="w-5 h-5 mr-2" />
-                About Me
-              </label>
-              {isEditing ? (
-                <textarea
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  className="textarea-field"
-                  rows="4"
-                  placeholder="Tell others about yourself..."
-                />
-              ) : (
-                <p className="text-gray-700 bg-gray-50 p-4 rounded-lg">
-                  {user?.bio || 'No bio added yet'}
-                </p>
-              )}
-            </div>
-
-            {/* Struggles */}
-            <div>
-              <label className="block text-gray-700 font-medium mb-2">
-                What I'm Dealing With
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.struggles}
-                  onChange={(e) => setFormData({ ...formData, struggles: e.target.value })}
-                  className="input-field"
-                  placeholder="Anxiety, Depression, Stress (comma separated)"
-                />
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {user?.struggles?.map((struggle, index) => (
+          {/* Struggles Section */}
+          <div className="mb-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Struggles</h3>
+            {isEditing ? (
+              <input
+                type="text"
+                name="struggles"
+                value={formData.struggles}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Comma-separated (e.g., Anxiety, Depression)"
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user?.struggles && user.struggles.length > 0 ? (
+                  user.struggles.map((struggle, idx) => (
                     <span
-                      key={index}
-                      className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full font-medium"
+                      key={idx}
+                      className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm"
                     >
                       {struggle}
                     </span>
-                  ))}
-                </div>
-              )}
-            </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No struggles added</p>
+                )}
+              </div>
+            )}
+          </div>
 
-            {/* Interests */}
-            <div>
-              <label className="block text-gray-700 font-medium mb-2 flex items-center">
-                <Heart className="w-5 h-5 mr-2" />
-                My Interests
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.interests}
-                  onChange={(e) => setFormData({ ...formData, interests: e.target.value })}
-                  className="input-field"
-                  placeholder="Reading, Music, Yoga (comma separated)"
-                />
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {user?.interests?.map((interest, index) => (
+          {/* Interests Section */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Interests</h3>
+            {isEditing ? (
+              <input
+                type="text"
+                name="interests"
+                value={formData.interests}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Comma-separated (e.g., Reading, Music, Hiking)"
+              />
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {user?.interests && user.interests.length > 0 ? (
+                  user.interests.map((interest, idx) => (
                     <span
-                      key={index}
-                      className="bg-pink-100 text-pink-700 px-4 py-2 rounded-full font-medium"
+                      key={idx}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
                     >
                       {interest}
                     </span>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Action Buttons */}
-            {isEditing && (
-              <div className="flex space-x-4 pt-4">
-                <button
-                  onClick={handleSave}
-                  className="flex-1 btn-primary flex items-center justify-center space-x-2"
-                >
-                  <Save className="w-5 h-5" />
-                  <span>Save Changes</span>
-                </button>
-                <button
-                  onClick={handleCancel}
-                  className="px-6 btn-secondary flex items-center space-x-2"
-                >
-                  <X className="w-5 h-5" />
-                  <span>Cancel</span>
-                </button>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No interests added</p>
+                )}
               </div>
             )}
           </div>

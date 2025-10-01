@@ -1,6 +1,8 @@
 const Message = require('../models/Message');
 const Connection = require('../models/Connection');
+const User = require('../models/User');
 const { successResponse, errorResponse } = require('../utils/responseHandler');
+const mongoose = require('mongoose');
 
 // @desc    Send a message
 // @route   POST /api/messages
@@ -66,14 +68,14 @@ const getConversation = async (req, res) => {
 // @access  Private
 const getConversations = async (req, res) => {
   try {
-    // Get all unique users the current user has messaged with
-    const messages = await Message.aggregate([
+    // Convert to ObjectId properly
+    const userId = new mongoose.Types.ObjectId(req.user._id);
+
+    // Get all unique users the current user has messaged with using aggregation
+    const conversations = await Message.aggregate([
       {
         $match: {
-          $or: [
-            { sender: req.user._id },
-            { recipient: req.user._id }
-          ]
+          $or: [{ sender: userId }, { recipient: userId }]
         }
       },
       { $sort: { createdAt: -1 } },
@@ -81,7 +83,7 @@ const getConversations = async (req, res) => {
         $group: {
           _id: {
             $cond: [
-              { $eq: ['$sender', req.user._id] },
+              { $eq: ['$sender', userId] },
               '$recipient',
               '$sender'
             ]
@@ -92,7 +94,7 @@ const getConversations = async (req, res) => {
               $cond: [
                 {
                   $and: [
-                    { $eq: ['$recipient', req.user._id] },
+                    { $eq: ['$recipient', userId] },
                     { $eq: ['$isRead', false] }
                   ]
                 },
@@ -102,18 +104,85 @@ const getConversations = async (req, res) => {
             }
           }
         }
-      }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'otherUser'
+        }
+      },
+      { $unwind: '$otherUser' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'lastMessage.sender',
+          foreignField: '_id',
+          as: 'lastMessage.senderDetails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'lastMessage.recipient',
+          foreignField: '_id',
+          as: 'lastMessage.recipientDetails'
+        }
+      },
+      {
+        $addFields: {
+          'lastMessage.sender': {
+            $cond: [
+              { $gt: [{ $size: '$lastMessage.senderDetails' }, 0] },
+              {
+                _id: { $arrayElemAt: ['$lastMessage.senderDetails._id', 0] },
+                name: { $arrayElemAt: ['$lastMessage.senderDetails.name', 0] },
+                avatar: { $arrayElemAt: ['$lastMessage.senderDetails.avatar', 0] }
+              },
+              null
+            ]
+          },
+          'lastMessage.recipient': {
+            $cond: [
+              { $gt: [{ $size: '$lastMessage.recipientDetails' }, 0] },
+              {
+                _id: { $arrayElemAt: ['$lastMessage.recipientDetails._id', 0] },
+                name: { $arrayElemAt: ['$lastMessage.recipientDetails.name', 0] },
+                avatar: { $arrayElemAt: ['$lastMessage.recipientDetails.avatar', 0] }
+              },
+              null
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          otherUser: {
+            _id: '$otherUser._id',
+            name: '$otherUser.name',
+            email: '$otherUser.email',
+            avatar: '$otherUser.avatar',
+            isOnline: '$otherUser.isOnline'
+          },
+          lastMessage: {
+            _id: '$lastMessage._id',
+            content: '$lastMessage.content',
+            createdAt: '$lastMessage.createdAt',
+            isRead: '$lastMessage.isRead',
+            sender: '$lastMessage.sender',
+            recipient: '$lastMessage.recipient'
+          },
+          unreadCount: 1
+        }
+      },
+      { $sort: { 'lastMessage.createdAt': -1 } }
     ]);
 
-    // Populate user details
-    const populatedConversations = await Message.populate(messages, [
-      { path: '_id', select: 'name avatar isOnline' },
-      { path: 'lastMessage.sender', select: 'name avatar' },
-      { path: 'lastMessage.recipient', select: 'name avatar' }
-    ]);
-
-    successResponse(res, populatedConversations, 'Conversations fetched successfully');
+    successResponse(res, conversations, 'Conversations fetched successfully');
   } catch (error) {
+    console.error('Get conversations error:', error);
     errorResponse(res, error.message, 500);
   }
 };
@@ -126,8 +195,14 @@ const markAsRead = async (req, res) => {
     const { userId } = req.params;
 
     await Message.updateMany(
-      { sender: userId, recipient: req.user._id, isRead: false },
-      { isRead: true, readAt: Date.now() }
+      {
+        sender: userId,
+        recipient: req.user._id,
+        isRead: false
+      },
+      {
+        isRead: true
+      }
     );
 
     successResponse(res, null, 'Messages marked as read');
@@ -136,9 +211,9 @@ const markAsRead = async (req, res) => {
   }
 };
 
-module.exports = { 
-  sendMessage, 
-  getConversation, 
-  getConversations, 
-  markAsRead 
+module.exports = {
+  sendMessage,
+  getConversation,
+  getConversations,
+  markAsRead
 };

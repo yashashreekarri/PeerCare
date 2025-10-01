@@ -1,5 +1,6 @@
+// frontend/src/contexts/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
-import { mockCurrentUser } from '../utils/mockData';
+import authService from '../services/authService';
 
 const AuthContext = createContext();
 
@@ -17,58 +18,101 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check if user is logged in (from localStorage)
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setLoading(false);
+    const initAuth = async () => {
+      try {
+        const storedUser = authService.getUserFromStorage();
+        const token = authService.getToken();
+
+        if (storedUser && token) {
+          // Optionally verify token with backend
+          try {
+            const response = await authService.getCurrentUser();
+            if (response.success) {
+              setUser(response.data);
+            } else {
+              setUser(storedUser); // Fallback to stored user
+            }
+          } catch (error) {
+            // If verification fails, use stored user anyway
+            setUser(storedUser);
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
   }, []);
 
-  const login = (email, password) => {
-    // Mock login - in real app, this would call backend API
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (email && password) {
-          const userData = { ...mockCurrentUser, email };
-          setUser(userData);
-          localStorage.setItem('user', JSON.stringify(userData));
-          resolve(userData);
-        } else {
-          reject(new Error('Invalid credentials'));
-        }
-      }, 1000);
-    });
+  const login = async (email, password) => {
+    try {
+      const response = await authService.login(email, password);
+      
+      if (response.success && response.data) {
+        setUser(response.data);
+        return response;
+      } else {
+        throw new Error(response.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
-  const register = (userData) => {
-    // Mock registration
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (userData.email && userData.password) {
-          const newUser = {
-            ...mockCurrentUser,
-            ...userData,
-            id: Date.now(),
-          };
-          setUser(newUser);
-          localStorage.setItem('user', JSON.stringify(newUser));
-          resolve(newUser);
-        } else {
-          reject(new Error('Registration failed'));
-        }
-      }, 1000);
-    });
+  const register = async (userData) => {
+    try {
+      const response = await authService.register(userData);
+      
+      if (response.success && response.data) {
+        setUser(response.data);
+        return response;
+      } else {
+        throw new Error(response.message || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
+  const logout = async () => {
+    try {
+      await authService.logout();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear user state even if API call fails
+      setUser(null);
+    }
   };
 
-  const updateProfile = (updatedData) => {
-    const updatedUser = { ...user, ...updatedData };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
+  const updateProfile = async (updatedData) => {
+    try {
+      const updatedUser = { ...user, ...updatedData };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Update profile error:', error);
+      throw error;
+    }
+  };
+
+  const refreshUser = async () => {
+    try {
+      const response = await authService.getCurrentUser();
+      if (response.success && response.data) {
+        setUser(response.data);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Refresh user error:', error);
+      throw error;
+    }
   };
 
   const value = {
@@ -78,6 +122,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateProfile,
+    refreshUser,
     isAuthenticated: !!user,
   };
 
