@@ -110,11 +110,11 @@ Quick access to both national and IIT-specific help:
 ┌────────────────────────────┐
 │ React.js + Tailwind (UI) │ ← Presentation Layer
 └──────────────┬─────────────┘
-│ REST API
+│          REST API
 ┌──────────────▼─────────────┐
 │ Node.js + Express (API) │ ← Application Layer
 └──────────────┬─────────────┘
-│ Mongoose ODM
+│        Mongoose ODM
 ┌──────────────▼─────────────┐
 │ MongoDB Database │ ← Data Layer
 └────────────────────────────┘
