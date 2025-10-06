@@ -41,6 +41,16 @@ const messageService = {
       throw error;
     }
   },
+
+  // Get unread messages count
+  getUnreadCount: async () => {
+    try {
+      const response = await api.get('/messages/unread/count');
+      return response;
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default messageService;

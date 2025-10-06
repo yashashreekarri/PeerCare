@@ -211,9 +211,26 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// @desc    Get unread messages count
+// @route   GET /api/messages/unread/count
+// @access  Private
+const getUnreadCount = async (req, res) => {
+  try {
+    const unreadCount = await Message.countDocuments({
+      recipient: req.user._id,
+      isRead: false
+    });
+
+    successResponse(res, { count: unreadCount }, 'Unread count fetched successfully');
+  } catch (error) {
+    errorResponse(res, error.message, 500);
+  }
+};
+
 module.exports = {
   sendMessage,
   getConversation,
   getConversations,
-  markAsRead
+  markAsRead,
+  getUnreadCount
 };
