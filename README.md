@@ -106,25 +106,29 @@ Quick access to both national and IIT-specific help:
 
 ---
 
-## 🏗 Architecture
-┌────────────────────────────┐
-│ React.js + Tailwind (UI) │ ← Presentation Layer
-└──────────────┬─────────────┘
-│          REST API
-┌──────────────▼─────────────┐
-│ Node.js + Express (API) │ ← Application Layer
-└──────────────┬─────────────┘
-│        Mongoose ODM
-┌──────────────▼─────────────┐
-│ MongoDB Database │ ← Data Layer
-└────────────────────────────┘
+## 🏗 Architecture (Mermaid)
+
+```mermaid
+flowchart TB
+  A[React.js + Tailwind<br/>Presentation Layer] -->|REST API| B[Node.js + Express<br/>Application Layer]
+  B -->|Mongoose ODM| C[MongoDB<br/>Data Layer]
+
+  %% Legend
+  classDef ui fill:#e8f0fe,stroke:#1a73e8,stroke-width:1px,color:#111;
+  classDef api fill:#e6f4ea,stroke:#188038,stroke-width:1px,color:#111;
+  classDef db fill:#fce8e6,stroke:#d93025,stroke-width:1px,color:#111;
+
+  class A ui
+  class B api
+  class C db
+```
 
 
 **Data Collections:**  
 - `Users` — authentication & profiles  
 - `Connections` — peer relationships  
 - `Messages` — conversation history  
-- `Journal` — private wellness logs:contentReference[oaicite:1]{index=1}
+- `Journal` — private wellness logs
 
 ---
 
