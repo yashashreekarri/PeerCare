@@ -36,8 +36,7 @@ The platform:
 - Integrates safety tools, crisis resources, and ethical guidelines.
 
 **Key Accomplishment:**  
-Successfully developed and deployed a full-stack web app featuring authentication, peer connections, messaging, journaling, crisis detection, and IIT-specific verification systems. :contentReference[oaicite:0]{index=0}
-
+Successfully developed and deployed a full-stack web app featuring authentication, peer connections, messaging, journaling, crisis detection, and IIT-specific verification systems. 
 ---
 
 ## 💡 Key Features
