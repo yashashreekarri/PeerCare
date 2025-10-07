@@ -249,6 +249,7 @@ AI-powered sentiment and resource suggestions
 🙌 Contributors & Acknowledgments
 
 Author: Yashashree Reddy
+
 Advisor: Dr. Kevin W. Cassel
 Institution: Illinois Institute of Technology
 Course: [Course Code – Independent Project / Final Project]
